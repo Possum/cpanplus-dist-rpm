@@ -470,9 +470,13 @@ sub _is_module_build_compat {
     my $module = shift @_ || $self->parent;
 
     my $makefile = file $module->_status->extract . '/Makefile.PL';
-    my $content  = $makefile->slurp;
+    if ( -e $makefile ) {
+        my $content = $makefile->slurp;
 
-    return $content =~ /Module::Build::Compat/;
+        return $content =~ /Module::Build::Compat/;
+    }
+
+    return -e $module->_status->extract . '/Build.PL';
 }
 
 sub _mk_pkg_name {
@@ -730,17 +734,32 @@ BuildRequires: perl([% br %])[% IF (brs.$br > 0) %] >= [% brs.$br %][% END %]
 %setup -q -n [% status.distname %]-%{version}
 
 %build
-[% IF (!status.is_noarch) -%]
-%{__perl} Makefile.PL INSTALLDIRS=vendor OPTIMIZE="%{optflags}"
+[% SET module_build = buildreqs.exists('Module::Build::Compat' ) -%]
+[%- IF ( module_build ) -%]
+  [%- IF (!status.is_noarch) %]
+%{__perl} Build.PL --installdirs=vendor OPTIMIZE="%{optflags}"
+  [%- ELSE %]
+%{__perl} Build.PL --installdirs=vendor
+  [%- END %]
+./Build %{?_smp_mflags}
 [% ELSE -%]
+  [%- IF (!status.is_noarch) %]
+%{__perl} Makefile.PL INSTALLDIRS=vendor OPTIMIZE="%{optflags}"
+  [%- ELSE %]
 %{__perl} Makefile.PL INSTALLDIRS=vendor
-[% END -%]
+  [%- END %]
 make %{?_smp_mflags}
+[%- END %]
 
 %install
 rm -rf %{buildroot}
 
+[% IF ( module_build ) -%]
+./Build install --destdir=%{buildroot}
+[% ELSE -%]
 make pure_install PERL_INSTALL_ROOT=%{buildroot}
+[% END -%]
+
 find %{buildroot} -type f -name .packlist -exec rm -f {} ';'
 [% IF (!status.is_noarch) -%]
 find %{buildroot} -type f -name '*.bs' -a -size 0 -exec rm -f {} ';'
@@ -750,7 +769,7 @@ find %{buildroot} -depth -type d -exec rmdir {} 2>/dev/null ';'
 %{_fixperms} %{buildroot}/*
 
 %check
-make test
+[% IF ( module_build ) %]./Build[% ELSE %]make[% END %] test
 
 %clean
 rm -rf %{buildroot} 
