@@ -33,6 +33,7 @@ use Readonly;
 use Software::LicenseUtils;
 use Text::Autoformat;
 use Template;
+use version;
 
 our $VERSION = '0.0.8';
 
@@ -302,9 +303,13 @@ sub _package_exists {
     #my $pkg = ( sort glob "$RPMDIR/RPMS/*/$name-$vers-*.rpm" )[-1];
     #return $pkg;
 
-    my $output = `rpm -q $rpmname`;
-    
-    return $output =~ /is not installed/ ? 0 : 1;
+    my $version = version->new($self->parent->package_version);
+
+    my $installed_ver = `rpm --qf '%{VERSION}' -q $rpmname`;
+    $installed_ver =~ /^\d+\.?\d*$/ or return 0;
+    $installed_ver = version->new($installed_ver);
+
+    return ( $installed_ver >= $version );
 }
 
 sub _prepare_status {
