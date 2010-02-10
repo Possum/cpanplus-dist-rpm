@@ -718,7 +718,7 @@ Requires:   perl(:MODULE_COMPAT_%(eval "`%{__perl} -V:version`"; echo $version))
 [% IF status.is_noarch %]BuildArch:  noarch[% END %]
 
 [% brs = buildreqs; FOREACH br = brs.keys.sort -%]
-BuildRequires: perl([% br %])[% IF (brs.$br != 0) %] >= [% brs.$br %][% END %]
+BuildRequires: perl([% br %])[% IF (brs.$br > 0) %] >= [% brs.$br %][% END %]
 [% END -%]
 
 
