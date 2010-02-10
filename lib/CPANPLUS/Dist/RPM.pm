@@ -292,7 +292,7 @@ sub _prepare_spec {
             packagervers => $VERSION,
         },
         $self->status->specpath,
-    );
+    ) or die $tmpl->error;
 }
 
 sub _package_exists {
